@@ -11,5 +11,6 @@ client.on('message', msg => { // if user posts msg, reply with..
     if (msg.content === "HI TOPIABOT") {
         msg.reply('hello! ✦');
     }
+});
 
 client.login(process.env.CLIENT_TOKEN); // login bot using token (.env file)
