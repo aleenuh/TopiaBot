@@ -23,13 +23,6 @@ module.exports = {
             });
         });
     },
-    GetCard : function (tier, callback) {
-        return this.GetCardFromDatabase(tier, function(result){
-            if(result.length > 0) {
-                return callback(result[index]);
-             }
-        });
-    },
     GetCardFromDatabase: function (tier, callback) {
         return con.query("SELECT * FROM PhotoCard WHERE Tier = ?;", [tier],
         function (err, result, fields) {
