@@ -1,7 +1,6 @@
 require('dotenv').config(); // initialize dotenv
 const Discord = require('discord.js'); //importing discord.js
 
-const mysqlDB = require('./MysqlDB.js');
 const commandHandler = require('./Commands.js');
 const client = new Discord.Client({ intents: ['GUILDS', 'GUILD_MESSAGES'] }); // create new client (intents req.)
 

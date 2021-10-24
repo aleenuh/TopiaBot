@@ -12,8 +12,6 @@
   "dependencies": {
     "discord.js": "^13.1.0",
     "dotenv": "^10.0.0",
-    "filereader": "^0.10.3",
-    "mysql2": "^2.3.2",
-    "sqlstring": "^2.3.2"
+    "mysql2": "^2.3.2"
   }
 }

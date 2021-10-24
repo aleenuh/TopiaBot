@@ -1,8 +1,5 @@
 const Discord = require('discord.js'); //importing discord.js
 const mysqlDB = require('./MysqlDB.js');
-const fs = require('fs');
-const path = require('path');
-const { stringify } = require('querystring');
 
 const prefix = '!';
 const MessageEmbed = Discord.MessageEmbed;
@@ -53,43 +50,21 @@ function ShowRandomCard(msg, args) {
 
     if (!isNaN(parseInt(tier))) {
         tier = parseInt(tier);
-        mysqlDB.GetCardFromDatabase(tier, function (codename, tier, blob, extension) {
+        mysqlDB.GetCardFromDatabase(tier, function (codename, tier, url) {
             if (typeof tier === 'string' || tier instanceof String) {
                 msg.reply(tier);
                 return;
-            }
-    
-            var path = saveImage('temp', blob, extension, function (path) {
-                if(path == null)
-                    return;
+            }              
+            var embed = new MessageEmbed()
+                .setTitle(codename)
+            .setDescription("Tier: " + tier)
+            .setImage(url);
 
-                
-                var embed = new MessageEmbed()
-                    .setTitle(codename)
-                    .setDescription("Tier: " + tier)
-                    .setImage('attachment://temp.' + extension);
-
-                msg.channel.send({ embeds: [embed], files: [path]});
-            });
+            msg.channel.send({ embeds: [embed]});
+            return;
         });
         return;
     }
-    console.log('Arg is not a number');
+    console.log('Argument is not a number');
+    return;
 }
-
-function saveImage(filename, blob, extension, callback){
-    var myBuffer = new Buffer.from(blob);
-    for (var i = 0; i < blob.length; i++) {
-        myBuffer[i] = blob[i];
-    }
-    var path = './temp/'+filename + extension;
-    fs.writeFile(path, myBuffer, function(err) {
-        if(err) {
-            console.log(err);
-            return null;
-        } else {
-            console.log("The file was saved!");
-            return callback(path);
-        }
-    });
-  };
