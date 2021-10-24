@@ -1,5 +1,6 @@
 const Discord = require('discord.js'); //importing discord.js
 const mysqlDB = require('./MysqlDB.js');
+const mongoDB = require('./MongoDB.js');
 
 const prefix = '!';
 const MessageEmbed = Discord.MessageEmbed;
@@ -22,10 +23,13 @@ module.exports = async function(msg) {
     
     switch (args[0].toLowerCase()) {
         case 'showrandomcard':
-            ShowRandomCard(msg, args)
+            ShowRandomCard(msg, args);
             break;
         case 'test':
-            Test(msg, args)
+            Test(msg, args);
+            break;
+        case 'showrandomcardmongo':
+            ShowRandomCardMongo(msg, args);
             break;
         default:
             console.log('No Command found');
@@ -51,6 +55,35 @@ function ShowRandomCard(msg, args) {
     if (!isNaN(parseInt(tier))) {
         tier = parseInt(tier);
         mysqlDB.GetCardFromDatabase(tier, function (codename, tier, url) {
+            if (typeof tier === 'string' || tier instanceof String) {
+                msg.reply(tier);
+                return;
+            }              
+            var embed = new MessageEmbed()
+                .setTitle(codename)
+            .setDescription("Tier: " + tier)
+            .setImage(url);
+
+            msg.channel.send({ embeds: [embed]});
+            return;
+        });
+        return;
+    }
+    console.log('Argument is not a number');
+    return;
+}
+
+function ShowRandomCardMongo(msg, args) {
+    if(args.length < 2) {
+        console.log('No tier number found');
+        return;
+    }
+
+    var tier = args[1];
+
+    if (!isNaN(parseInt(tier))) {
+        tier = parseInt(tier);
+        mongoDB.GetCardFromDatabase(tier, function (codename, tier, url) {
             if (typeof tier === 'string' || tier instanceof String) {
                 msg.reply(tier);
                 return;
