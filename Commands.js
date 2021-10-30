@@ -1,6 +1,7 @@
 const Discord = require('discord.js'); //importing discord.js
 const mysqlDB = require('./MysqlDB.js');
 const mongoDB = require('./MongoDB.js');
+const { InsetUserinDatabase } = require('./MysqlDB.js');
 
 const prefix = '!';
 const MessageEmbed = Discord.MessageEmbed;
@@ -31,10 +32,30 @@ module.exports = async function(msg) {
         case 'showrandomcardmongo':
             ShowRandomCardMongo(msg, args);
             break;
+        case 'begin': // !begin command - creates a user account, adds to db
+            Register(msg, args);
         default:
             console.log('No Command found');
     }
 };
+
+function Register(msg, args) { 
+    // if user is not in the database, add them
+    // if user is in the database, say you already have an account
+    // if they arent on the database and try any other command, tell them to register.
+    // msg.channel.send(msg.author.id + " " + msg.author.tag);
+    // mysqlDB.InsertUserInDatabase(msg.author.id, msg.author.tag);
+    // msg.channel.send("Successfully registered!")
+    // {
+        mysqlDB.InsertUserinDatabase(msg.author.id, msg.author.tag);
+        msg.channel.send("Successfully registered!");
+    //}
+/*      catch (err) {
+        if (err.code == 'ER_DUP_ENTRY') {
+            msg.channel.send("You already have an account!");
+        }
+    } */
+}
 
 function Test(msg, args) {
     var embed = new MessageEmbed()
@@ -61,8 +82,8 @@ function ShowRandomCard(msg, args) {
             }              
             var embed = new MessageEmbed()
                 .setTitle(codename)
-            .setDescription("Tier: " + tier)
-            .setImage(url);
+                .setDescription("Tier: " + tier)
+                .setImage(url);
 
             msg.channel.send({ embeds: [embed]});
             return;

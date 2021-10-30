@@ -35,5 +35,16 @@ module.exports = {
             }
             return callback("", "No cards found :sob:" , "");
         });
-    }
-};
+    },
+    
+    InsertUserinDatabase: function (id, tag) {
+    con.connect(function(err) {
+        if (err) throw err; // connected to db
+        con.query = ("INSERT INTO User(DiscordID, Description, Coins) VALUES (?, ?, ?);", [id, tag, 0],
+        function(err, result) {
+            if (err) throw err; // connected to db
+            console.log("New User added! - " + result.affectedRows);
+        });
+    });
+    },
+}
