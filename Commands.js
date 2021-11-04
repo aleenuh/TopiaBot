@@ -7,54 +7,67 @@ const prefix = '!';
 const MessageEmbed = Discord.MessageEmbed;
 
 module.exports = async function(msg) {
-    if(msg.author.bot)
+    if(msg.author.bot) //Message was sent by bot
         return;
 
-    if (msg.content === "HI TOPIABOT") {
+    if (msg.content === "HI TOPIABOT") { //Cute lil interaction
         msg.reply('hello! ✦');
         return;
     }
 
-    if(!msg.content.startsWith(prefix))
+    if(!msg.content.startsWith(prefix)) //Check if message was sent with the bot's prefix
         return;
 
     const args = msg.content.slice(prefix.length).trim().split(/ +/);
-    if(args.length <= 0)
+    if(args.length <= 0) //Check the arguments. if 0 then the message was '!'
         return;
     
-    switch (args[0].toLowerCase()) {
-        case 'showrandomcard':
-            ShowRandomCard(msg, args);
-            break;
-        case 'test':
-            Test(msg, args);
-            break;
-        case 'showrandomcardmongo':
-            ShowRandomCardMongo(msg, args);
-            break;
-        case 'begin': // !begin command - creates a user account, adds to db
-            Register(msg, args);
-        default:
-            console.log('No Command found');
-    }
+    const command = args[0].toLowerCase();
+    mysqlDB.CheckUserInDatabase(msg.author.id, function (userExists) {
+        if(userExists)
+        {
+            if(command == 'begin') //If user exists and types !begin do nothing
+            {
+                msg.reply("You are already registered with this Bot :upside_down:");
+                return;
+            }
+        }
+        else {
+            if(command != 'begin') //If user does not exists and does not type !begin send a reply
+            {
+                msg.reply("Please type '!begin' to start using the Topia Bot");
+                return;
+            }
+        }
+
+        switch (command) { // Command handling
+            case 'showrandomcard':
+                ShowRandomCard(msg, args);
+                break;
+            case 'test':
+                Test(msg, args);
+                break;
+            case 'showrandomcardmongo':
+                ShowRandomCardMongo(msg, args);
+                break;
+            case 'begin': // !begin command - creates a user account, adds to db
+                Register(msg, args);
+                break;
+            default:
+                console.log('No Command found called ' + command);
+        }
+    })
 };
 
 function Register(msg, args) { 
-    // if user is not in the database, add them
-    // if user is in the database, say you already have an account
-    // if they arent on the database and try any other command, tell them to register.
-    // msg.channel.send(msg.author.id + " " + msg.author.tag);
-    // mysqlDB.InsertUserInDatabase(msg.author.id, msg.author.tag);
-    // msg.channel.send("Successfully registered!")
-    // {
-        mysqlDB.InsertUserinDatabase(msg.author.id, msg.author.tag);
-        msg.channel.send("Successfully registered!");
-    //}
-/*      catch (err) {
-        if (err.code == 'ER_DUP_ENTRY') {
-            msg.channel.send("You already have an account!");
+    mysqlDB.InsertUserinDatabase(msg.author.id, msg.author.tag,
+        function (insertSucceeded) {
+            if(insertSucceeded)
+                msg.channel.send("Successfully registered!");
+            else
+                msg.channel.send("Oh no... Our Database... It's broken")
         }
-    } */
+    );
 }
 
 function Test(msg, args) {

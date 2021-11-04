@@ -8,19 +8,16 @@ var con = mysql.createConnection({
 });
 
 module.exports = {
-    TestConnection: function () {
-        return con.connect(function(err) {
+    CheckUserInDatabase: function (discordID, callback) {
+        return con.query("SELECT * FROM User WHERE DiscordID = ?;", [discordID],
+        function (err, result) {
             if (err) {
-                console.log(err.sqlMessage);
-                throw new err;
+                console.log(err.message);
+            } else if (result && result.length > 0)
+            {
+                return callback(true);
             }
-            return con.query("SELECT * FROM DropChance" , function (err, result, fields) {
-                if (err) {
-                    console.log(err.sqlMessage);
-                    throw new err;
-                }
-                console.log(result);
-            });
+            return callback(false);
         });
     },
     GetCardFromDatabase: function (tier, callback) {
@@ -29,22 +26,23 @@ module.exports = {
             if (err) {
                 throw new err;
             }
-            if(result.length > 0) {
+            if (result.length > 0) {
                 var index = Math.floor(Math.random() * (result.length - 0) + 0);
                 return callback(result[index].CodeName,result[index].Tier, result[index].URL);
             }
+            con.end();
             return callback("", "No cards found :sob:" , "");
         });
     },
-    
-    InsertUserinDatabase: function (id, tag) {
-    con.connect(function(err) {
-        if (err) throw err; // connected to db
-        con.query = ("INSERT INTO User(DiscordID, Description, Coins) VALUES (?, ?, ?);", [id, tag, 0],
+    InsertUserinDatabase: function (id, tag, callback) {
+        return con.query("INSERT INTO User(DiscordID, Description, Coins) VALUES (?, ?, ?);", [id, tag, 0],
         function(err, result) {
-            if (err) throw err; // connected to db
+            if (err) { // check for query errors
+                console.log(err.message);
+                return callback(false);
+            }
             console.log("New User added! - " + result.affectedRows);
+            return callback(true);
         });
-    });
     },
 }
