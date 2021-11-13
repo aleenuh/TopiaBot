@@ -23,26 +23,72 @@ module.exports = {
             const cursor = collection.find(query, options);
             
             if (await cursor.count() !== 0) {
-                await cursor.toArray(function (err, result) {
-                    if(err != null)
+                cursor.toArray(function (err, result) {
+                    if (err != null)
                         throw err;
-                    
+
                     console.log(result);
-                    
+
                     var index = Math.floor(Math.random() * (result.length));
                     console.log(index + " " + result[index]);
                     client.close;
-                    return callback( result[index].CodeName,  result[index].Tier, result[index].Url);
-                    return;
+                    return callback(result[index].CodeName, result[index].Tier, result[index].Url);
                 });
             }
-            await client.close;
+            client.close;
             return;
         } catch (err)
         {
             console.log(err);
-            await client.close;
+            client.close;
         }
         return callback("", "No cards found :sob:" , "");
+    },
+    CheckUserInDatabase: async function (discordID, callback) {
+        try {
+            await client.connect();
+            const database = client.db(process.env.DB_DATABASE);
+            const collection = database.collection("User");
+            const query = { DiscordID: { $eq: discordID} };
+            const cursor = collection.find(query);
+            
+            if (await cursor.count() > 0) {
+
+                client.close;
+                return callback(true);
+            }
+            else{
+                client.close;
+                return callback(false);
+            }
+        } catch (err) {
+            console.log(err);
+            client.close;
+            return callback(false);
+        }
+    },
+    InsertUserinDatabase: async function (id, tag, callback) {
+        try {
+            await client.connect();
+            const database = client.db(process.env.DB_DATABASE);
+            const collection = database.collection("User");
+
+            var user = { DiscordID: id, Description: tag, Coins: 0 };
+
+            collection.insertOne(user, function(err, result) {
+                if(err) {
+                    console.log(err.message);
+                    client.close;
+                    return callback(false);
+                }
+                client.close;
+                console.log("New User added!");
+                return callback(true);
+            })
+        } catch (err) {
+            console.log(err);
+            client.close;
+            return callback(false);
+        }
     }
 };

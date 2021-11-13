@@ -23,7 +23,7 @@ module.exports = async function(msg) {
         return;
     
     const command = args[0].toLowerCase();
-    mysqlDB.CheckUserInDatabase(msg.author.id, function (userExists) {
+    mongoDB.CheckUserInDatabase(msg.author.id, function (userExists) {
         if(userExists)
         {
             if(command == 'begin') //If user exists and types !begin do nothing
@@ -41,17 +41,17 @@ module.exports = async function(msg) {
         }
 
         switch (command) { // Command handling
-            case 'showrandomcard':
-                ShowRandomCard(msg, args);
+            case 'begin': // !begin command - creates a user account, adds to db
+                Register(msg, args);
                 break;
             case 'test':
                 Test(msg, args);
                 break;
+            case 'showrandomcard':
+                ShowRandomCard(msg, args);
+                break;
             case 'showrandomcardmongo':
                 ShowRandomCardMongo(msg, args);
-                break;
-            case 'begin': // !begin command - creates a user account, adds to db
-                Register(msg, args);
                 break;
             default:
                 console.log('No Command found called ' + command);
@@ -60,12 +60,12 @@ module.exports = async function(msg) {
 };
 
 function Register(msg, args) { 
-    mysqlDB.InsertUserinDatabase(msg.author.id, msg.author.tag,
-        function (insertSucceeded) {
+    mongoDB.InsertUserinDatabase(msg.author.id, msg.author.tag,
+         function (insertSucceeded) {
             if(insertSucceeded)
                 msg.channel.send("Successfully registered!");
             else
-                msg.channel.send("Oh no... Our Database... It's broken")
+                msg.channel.send("Oh no...  Our Database... It's broken")
         }
     );
 }
