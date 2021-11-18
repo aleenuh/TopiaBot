@@ -32,7 +32,7 @@ module.exports = {
                     var index = Math.floor(Math.random() * (result.length));
                     console.log(index + " " + result[index]);
                     client.close;
-                    return callback(result[index].CodeName, result[index].Tier, result[index].Url);
+                    return callback(result[index].CodeName, result[index].Tier, result[index].Url, result[index].OwnedCopies);
                 });
             }
             client.close;
@@ -90,5 +90,26 @@ module.exports = {
             client.close;
             return callback(false);
         }
-    }
+    },
+    GetTiers: async function (callback) {
+        try {
+            await client.connect();
+            const database = client.db(process.env.DB_DATABASE);
+            const collection = database.collection("DropChance");
+            collection.find().toArray( function(err, result) {
+                if(err) {
+                    console.log(err.message);
+                    client.close;
+                    return callback(null);
+                }
+                client.close;
+                console.log(result);
+                return callback(result);
+            })
+        } catch (err) {
+            console.log(err);
+            client.close;
+            return callback(null);
+        }
+    },
 };

@@ -1,7 +1,6 @@
 const Discord = require('discord.js'); //importing discord.js
 const mysqlDB = require('./MysqlDB.js');
 const mongoDB = require('./MongoDB.js');
-const { InsetUserinDatabase } = require('./MysqlDB.js');
 
 const prefix = '!';
 const MessageEmbed = Discord.MessageEmbed;
@@ -117,14 +116,14 @@ function ShowRandomCardMongo(msg, args) {
 
     if (!isNaN(parseInt(tier))) {
         tier = parseInt(tier);
-        mongoDB.GetCardFromDatabase(tier, function (codename, tier, url) {
+        mongoDB.GetCardFromDatabase(tier, function (codename, tier, url, ownedCopies) {
             if (typeof tier === 'string' || tier instanceof String) {
                 msg.reply(tier);
                 return;
             }              
             var embed = new MessageEmbed()
                 .setTitle(codename)
-            .setDescription("Tier: " + tier)
+            .setDescription("Tier: " + tier + "\r\n" + "Owned Copies: " + ownedCopies)
             .setImage(url);
 
             msg.channel.send({ embeds: [embed]});
