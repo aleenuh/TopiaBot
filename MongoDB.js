@@ -112,4 +112,28 @@ module.exports = {
             return callback(null);
         }
     },
+    AddCardToUser: function (discordID, photocardID, copyNumber, callback) {
+        try {
+            await client.connect();
+            const database = client.db(process.env.DB_DATABASE);
+            const collection = database.collection("UserCard");
+
+            var userCard = { DiscordID: discordID, PhotoCardID: photocardID, CopyNumber: copyNumber };
+
+            collection.insertOne(userCard, function(err, result) {
+                if(err) {
+                    console.log(err.message);
+                    client.close;
+                    return callback(false);
+                }
+                client.close;
+                console.log("New UserCard added!");
+                return callback(true);
+            })
+        } catch (err) {
+            console.log(err);
+            client.close;
+            return callback(false);
+        }
+    }
 };

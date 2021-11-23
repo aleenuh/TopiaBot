@@ -1,6 +1,7 @@
 const Discord = require('discord.js'); //importing discord.js
 const mysqlDB = require('./MysqlDB.js');
 const mongoDB = require('./MongoDB.js');
+const cardDropper = require('./CardDropper.js');
 
 const prefix = '!';
 const MessageEmbed = Discord.MessageEmbed;
@@ -51,6 +52,9 @@ module.exports = async function(msg) {
                 break;
             case 'showrandomcardmongo':
                 ShowRandomCardMongo(msg, args);
+                break;
+            case 'claim':
+                cardDropper.ClaimCard(msg, args[1]);
                 break;
             default:
                 console.log('No Command found called ' + command);

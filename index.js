@@ -9,7 +9,7 @@ process.stdin.resume(); // Makes sure the application doesn't quit immeadiatly
 
 client.on('ready', () => { // On discord client ready
     console.log(`${client.user.tag} is online! ✦`);
-    //CardDropper.StartDroppingCards();
+    //CardDropper.StartDroppingCards(channelID);
 });
 
 client.on('messageCreate', commandHandler);

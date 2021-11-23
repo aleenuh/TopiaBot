@@ -1,5 +1,6 @@
 const Discord = require('discord.js'); //importing discord.js
 const mongoDB = require('./MongoDB.js');
+const main = require('./index.js');
 
 const prefix = '!';
 const MessageEmbed = Discord.MessageEmbed;
@@ -12,22 +13,24 @@ var timeVisible = 15;
 
 var timer;
 var tiers;
-var claimCode;
-var cardToPickUp;
+var droppedCardData;
 
 module.exports = {
-    StartDroppingCards: function() {
+    StartDroppingCards: function(channelID) {
         GetTiers();
-        SetTimer();
+        SetTimer(channelID);
     },
     StopDroppingCards: function() {
         if(timer !== null)
             clearTimeout(timer);
     },
-    PickupCard: function(msg, claim) {
-        if(claim !== claimCode && cardToPickUp == null)
+    ClaimCard: function(msg, claimCode) {
+        var channelID = message.guild.channels.cache.get(channelid);
+        var cardData = droppedCardData.find(data => data.ClaimCode === claimCode && data.ChannelID === channelID);
+        if(cardData === null)
             return;
-        PickupPhotoCard(msg, cardToPickUp);
+
+        PickupPhotoCard(msg, cardData);
     },
 };
 
@@ -37,20 +40,22 @@ function GetTiers() {
     });
 }
 
-function SetTimer() {
+function SetTimer(channelID) {
     var miliseconds = RandomRangeInt(minTime * 60 * 1000, maxTime * 60 * 1000);
     var time = miliseconds / 1000;
     console.log("Card will drop in " + time + " seconds which is " + (time / 60) + " minutes")
-    timer = setTimeout(DropCard, miliseconds);
+    timer = setTimeout(DropCard, miliseconds, channelID);
 }
 
-function DropCard() {
+function DropCard(channelID) {
     mongoDB.GetCardFromDatabase(GetTier(), function(codename, tier, url, ownedCopies) {
         if (typeof tier === 'string' || tier instanceof String) {
-            msg.reply(tier);
             return;
         }
-        claimCode = codename + "#" + ownedCopies + 1;
+        var claimcode = codename + "#" + ownedCopies + 1;
+        var cardData = { ClaimCode: claimcode, ChannelID: channelID, Timeout: null, msg: null }
+        droppedCardData.Add(cardData)
+
         var embed = new MessageEmbed()
             .setTitle(codename)
         .setDescription("Tier: " + tier + "\r\n" +
@@ -58,15 +63,37 @@ function DropCard() {
              "> Type !claim " + claimCode)
         .setImage(url);
 
-        msg.channel.send({ embeds: [embed]});
+        var channel = main.client.channels.get(channelID);
+        channel.send({ embeds: [embed]}).then(msg => {
+            var cardDataInList = droppedCardData.find(cardData);
+            cardDataInList.Timeout = setTimeout(EraseMessage, timeVisible, msg, cardData.ClaimCode);
+            cardDataInList.msg = msg;
+        }).catch(function(err){
+            console.log(err.message);
+            return;
+        });
         return;
     });    
 }
 
-function PickupPhotoCard(msg, card)
+function EraseMessage(msg, claimCode) {
+    droppedCardData.remove(data => data.ClaimCode === claimCode);
+    msg.delete(0);
+}
+
+function PickupPhotoCard(msg, cardData)
 {
-    cardToPickUp == null;
-    //TODO add card to user
+    var data = cardData.ClaimCode.split('#');
+    mongoDB.AddCardToUser(msg.author.id, data[0], data[1], function (succeeded){
+        if(succeeded)
+        {
+            removeTimeout(cardData.Timeout);
+            droppedCardData.remove(cardData);
+            cardData.msg.delete(0);
+        } else{
+            msg.reply("Ohno...  our database... it's broken...");
+        }
+    });
 }
 
 function GetTier() {
