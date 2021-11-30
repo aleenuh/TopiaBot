@@ -2,44 +2,46 @@ const Discord = require('discord.js'); //importing discord.js
 const mongoDB = require('./MongoDB.js');
 const main = require('./index.js');
 
-const prefix = '!';
 const MessageEmbed = Discord.MessageEmbed;
 
 // In minutes
-var minTime = 0.5;
-var maxTime = 1;
+var minTime = 15;
+var maxTime = 45;
 // In Seconds
 var timeVisible = 15;
 
-var timer;
-var tiers;
-var droppedCardData;
-
-//TODO Make a method to set timers for all channels in the database
-//TODO Hookup the serverID and channelID in all the methods so they can self sustain the loop by passing on the values on re setting the timer
+var tiers = [];
+var timers = [];
+var droppedCardData = [];
 
 module.exports = {
-    StartDroppingCards: function(channelID) {
+    StartDroppingCards: function () {
         GetTiers();
+        mongoDB.GetAllDropChannels(function (channels) {
+            for (const channelID of channels) {
+                SetTimer(channelID);
+            }
+        });
+    },
+    StartDroppingCardsInChannel: function(channelID) {
         SetTimer(channelID);
     },
     StopDroppingCards: function() {
-        if(timer !== null)
+        for (const timer of timers) {
             clearTimeout(timer);
+        }
     },
     ClaimCard: function(msg, claimCode) {
-        var channelID = message.guild.channels.cache.get(channelid);
+        var channelID = msg.channel.id;
         var cardData = droppedCardData.find(data => data.ClaimCode === claimCode && data.ChannelID === channelID);
-        if(cardData === null)
-            return;
-
-        PickupPhotoCard(msg, cardData);
+        if(cardData !== undefined)
+            PickupPhotoCard(msg, cardData);
     },
 };
 
 function GetTiers() {
     mongoDB.GetTiers( function (result) {
-        tiers = result;
+        tiers = result.reverse();
     });
 }
 
@@ -47,52 +49,76 @@ function SetTimer(channelID) {
     var miliseconds = RandomRangeInt(minTime * 60 * 1000, maxTime * 60 * 1000);
     var time = miliseconds / 1000;
     console.log("Card will drop in " + time + " seconds which is " + (time / 60) + " minutes")
-    timer = setTimeout(DropCard, miliseconds, channelID);
+    var id;
+    if(timers.length == 0)
+        id = 0;
+    else
+        id = timers[timers.length - 1].ID;
+
+    var timer = { ID: id, TimeOut: setTimeout(function() {
+        DropCard(channelID, id);
+    }, miliseconds) }
+    timers.push(timer);
 }
 
-function DropCard(channelID) {
+function DropCard(channelID, id) {
+    timers = timers.filter(data => data.ID !== id)
+
+    //TODO check special channel for extra tier drop
+
     mongoDB.GetCardFromDatabase(GetTier(), function(codename, tier, url, ownedCopies) {
         if (typeof tier === 'string' || tier instanceof String) {
             return;
         }
-        var claimcode = codename + "#" + ownedCopies + 1;
-        var cardData = { ClaimCode: claimcode, ChannelID: channelID, Timeout: null, msg: null }
-        droppedCardData.Add(cardData)
+        const number = Number(ownedCopies) + 1;
+
+        var claimCode = codename + "#" + number;
+        var cardData = { ClaimCode: claimCode, ChannelID: channelID, msg: {} }
+        droppedCardData.push(cardData)
 
         var embed = new MessageEmbed()
             .setTitle(codename)
         .setDescription("Tier: " + tier + "\r\n" +
-             "Copy Number: " + ownedCopies + 1 + "\r\n" +
+             "Copy Number: " + number + "\r\n" +
              "> Type !claim " + claimCode)
         .setImage(url);
 
-        var channel = main.client.channels.get(channelID);
-        channel.send({ embeds: [embed]}).then(msg => {
-            var cardDataInList = droppedCardData.find(cardData);
-            cardDataInList.Timeout = setTimeout(EraseMessage, timeVisible, msg, cardData.ClaimCode);
-            cardDataInList.msg = msg;
-        }).catch(function(err){
-            console.log(err.message);
+        main.GetChannel(channelID, function (channel) {
+            channel.send({ embeds: [embed]}).then( msg => {
+                var cardDataInList = droppedCardData.find(data => data === cardData);
+                cardDataInList.msg = msg;
+                let time = timeVisible * 1000;
+                setTimeout(function () {
+                    EraseMessage(msg, claimCode);
+                }, time);
+            }).catch(function(err){
+                console.log(err.message);
+                return;
+            });
             return;
         });
-        return;
     });    
 }
 
 function EraseMessage(msg, claimCode) {
-    droppedCardData.remove(data => data.ClaimCode === claimCode);
+    cardData = droppedCardData.find(data => data.ClaimCode === claimCode);
+    if(cardData === undefined)
+        return;
+    droppedCardData = droppedCardData.filter(data => data !== cardData);
+    console.log(droppedCardData);
     msg.delete(0);
+    SetTimer(cardData.ChannelID);
 }
 
 function PickupPhotoCard(msg, cardData)
 {
+    const claimCode = cardData.ClaimCode;
     var data = cardData.ClaimCode.split('#');
     mongoDB.AddCardToUser(msg.author.id, data[0], data[1], function (succeeded){
         if(succeeded)
         {
-            removeTimeout(cardData.Timeout);
-            droppedCardData.remove(cardData);
-            cardData.msg.delete(0);
+            EraseMessage(cardData.msg, claimCode);
+            msg.reply("You succesfully claimed " + claimCode);
         } else{
             msg.reply("Ohno...  our database... it's broken...");
         }
@@ -100,15 +126,15 @@ function PickupPhotoCard(msg, cardData)
 }
 
 function GetTier() {
-    var chance = RandomRangeFloat(0, 1);
-    tiers.reverse();
+    var chance = RandomRangeFloat(0, 100);
+    console.log("Chance: " + chance);
     var chanceMax = 0;
+    var chanceMin = 0;
     var index = -1;
     for(let i = 0; i < tiers.length; i++) {
         var tier = tiers[i];
         chanceMin = chanceMax;
         chanceMax += tier.Chance;
-        console.log("Min: " + chanceMin + " Max: " + chanceMax);
         if(chance > chanceMin && chance <= chanceMax) {
             index = i;
             break;
@@ -117,7 +143,6 @@ function GetTier() {
 
     if(index == -1)
         index = tiers.length -1;
-    
     return tiers[index].Tier;
 }
 

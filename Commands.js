@@ -145,9 +145,13 @@ function ShowRandomCardMongo(msg, args) {
 
 function SetDropChannel(msg, args) {
     mongoDB.AddOrUpdateChannel(msg, args, function (succeeded) {
-        if(!succeeded)
+        if(!succeeded) {
             msg.reply(databaseErrorMsg);
-        else
+        }
+        else {
+            
+            cardDropper.StartDroppingCardsInChannel(msg.channel.id);
             msg.reply("This channel will now be used to drop cards. :ok_hand:");
+        }
     })
 }
