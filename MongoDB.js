@@ -112,7 +112,7 @@ module.exports = {
             return callback(null);
         }
     },
-    AddCardToUser: function (discordID, photocardID, copyNumber, callback) {
+    AddCardToUser: async function (discordID, photocardID, copyNumber, callback) {
         try {
             await client.connect();
             const database = client.db(process.env.DB_DATABASE);
@@ -135,5 +135,71 @@ module.exports = {
             client.close;
             return callback(false);
         }
+    },
+    AddOrUpdateChannel: function (msg, args, callback) {
+        const serverID = msg.guild.id;
+
+        CheckForDiscord(serverID, function (exists) {
+            const channelID = msg.channel.id;
+            const specialChannel = args.length > 1;
+            InsertOrUpdateChannel(serverID, channelID, specialChannel, exists, function (succeeded){
+                return callback(succeeded);
+            });
+        });
     }
 };
+
+async function CheckForDiscord(serverID, callback) {
+    //Check if discordServerID is in the database
+    try {
+        await client.connect();
+        const database = client.db(process.env.DB_DATABASE);
+        const collection = database.collection("DropChannel");
+        const query = { ServerID: { $eq: serverID} };
+        const cursor = collection.find(query);
+        
+        if (await cursor.count() > 0) {
+
+            client.close;
+            return callback(true);
+        }
+        else{
+            client.close;
+            return callback(false);
+        }
+    } catch (err) {
+        console.log(err);
+        client.close;
+        return callback(false);
+    }
+}
+
+async function InsertOrUpdateChannel(serverID, channelID, specialChannel, updateRow, callback) {
+    try {
+        await client.connect();
+        const database = client.db(process.env.DB_DATABASE);
+        const collection = database.collection("DropChannel");
+
+        const query = { ServerID: serverID };
+        var update;
+        if(specialChannel)
+            update = { $set: { ServerID: serverID, SpecialChannelID: channelID }};
+        else
+            update = { $set: { ServerID: serverID, ChannelID: channelID }};
+        const options = { upsert: !updateRow};
+
+        collection.updateOne(query, update, options, function (err, res) {
+            if (err) {
+                console.log(err);
+                client.close;
+                return callback(false);
+            }
+            client.close;
+            return callback(true);
+        });
+    } catch (err) {
+        console.log(err);
+        client.close;
+        return callback(false);
+    }
+}

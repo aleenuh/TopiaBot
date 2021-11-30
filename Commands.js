@@ -4,6 +4,7 @@ const mongoDB = require('./MongoDB.js');
 const cardDropper = require('./CardDropper.js');
 
 const prefix = '!';
+const databaseErrorMsg = "Oh no...  Our Database... It's broken";
 const MessageEmbed = Discord.MessageEmbed;
 
 module.exports = async function(msg) {
@@ -56,6 +57,9 @@ module.exports = async function(msg) {
             case 'claim':
                 cardDropper.ClaimCard(msg, args[1]);
                 break;
+            case 'drophere':
+                SetDropChannel(msg, args);
+                break;
             default:
                 console.log('No Command found called ' + command);
         }
@@ -68,7 +72,7 @@ function Register(msg, args) {
             if(insertSucceeded)
                 msg.channel.send("Successfully registered!");
             else
-                msg.channel.send("Oh no...  Our Database... It's broken")
+                msg.channel.send(databaseErrorMsg)
         }
     );
 }
@@ -137,4 +141,13 @@ function ShowRandomCardMongo(msg, args) {
     }
     console.log('Argument is not a number');
     return;
+}
+
+function SetDropChannel(msg, args) {
+    mongoDB.AddOrUpdateChannel(msg, args, function (succeeded) {
+        if(!succeeded)
+            msg.reply(databaseErrorMsg);
+        else
+            msg.reply("This channel will now be used to drop cards. :ok_hand:");
+    })
 }

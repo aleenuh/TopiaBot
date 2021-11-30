@@ -15,6 +15,9 @@ var timer;
 var tiers;
 var droppedCardData;
 
+//TODO Make a method to set timers for all channels in the database
+//TODO Hookup the serverID and channelID in all the methods so they can self sustain the loop by passing on the values on re setting the timer
+
 module.exports = {
     StartDroppingCards: function(channelID) {
         GetTiers();
@@ -127,4 +130,3 @@ function RandomRangeInt(min, max) {
 function RandomRangeFloat(min, max) {
     return min + (max - min) * ((1 + 10E-16) * Math.random()); //The maximum is inclusive and the minimum is inclusive
 }
-  
