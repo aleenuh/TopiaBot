@@ -8,7 +8,7 @@ const client = new MongoClient(uri);
 
 
 module.exports = {
-    GetCardFromDatabase: async function (tier, callback) {
+    GetCardFromDatabaseTier: async function (tier, callback) {
         try {
             await client.connect();
             const database = client.db(process.env.DB_DATABASE);
@@ -103,6 +103,37 @@ module.exports = {
             return callback(allChannels);
         })
     },
+    CheckIfCardOwned: async function (discordID, photoCardID, copyNumber, callback) {
+        const query = { DiscordID: { $eq: discordID}, PhotoCardID: { $eq: photoCardID}, CopyNumber: { $eq: copyNumber}};
+        await CheckForRow("UserCard", query, function (exists) {
+            return callback(exists);
+        });
+    },
+    GetCardWithID: async function (photocardID, callback) {
+        try {
+            await client.connect();
+            const database = client.db(process.env.DB_DATABASE);
+            const collection = database.collection("PhotoCard");
+            const query = { CodeName: { $eq: photocardID} };
+
+            const options = {
+                projection: { _id: 0, CodeName: 1, Tier: 1, Url: 1, OwnedCopies: 1 }
+            };
+
+            collection.findOne(query, options, function(err, res) {
+                if (err != null)
+                        throw err;
+                client.close;
+                return callback(res);
+            });
+            return;
+        } catch (err)
+        {
+            console.log(err);
+            client.close;
+        }
+        return callback(null);
+    }
 };
 
 async function CheckForDiscord (serverID, callback) {

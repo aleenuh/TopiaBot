@@ -7,6 +7,7 @@ const MessageEmbed = Discord.MessageEmbed;
 // In minutes
 var minTime = 15;
 var maxTime = 45;
+
 // In Seconds
 var timeVisible = 15;
 
@@ -66,7 +67,7 @@ function DropCard(channelID, id) {
 
     //TODO check special channel for extra tier drop
 
-    mongoDB.GetCardFromDatabase(GetTier(), function(codename, tier, url, ownedCopies) {
+    mongoDB.GetCardFromDatabaseTier(GetTier(), function(codename, tier, url, ownedCopies) {
         if (typeof tier === 'string' || tier instanceof String) {
             return;
         }

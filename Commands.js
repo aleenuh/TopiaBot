@@ -60,6 +60,9 @@ module.exports = async function(msg) {
             case 'drophere':
                 SetDropChannel(msg, args);
                 break;
+            case 'view':
+                ViewCard(msg, args);
+                break;
             default:
                 console.log('No Command found called ' + command);
         }
@@ -124,7 +127,7 @@ function ShowRandomCardMongo(msg, args) {
 
     if (!isNaN(parseInt(tier))) {
         tier = parseInt(tier);
-        mongoDB.GetCardFromDatabase(tier, function (codename, tier, url, ownedCopies) {
+        mongoDB.GetCardFromDatabaseTier(tier, function (codename, tier, url, ownedCopies) {
             if (typeof tier === 'string' || tier instanceof String) {
                 msg.reply(tier);
                 return;
@@ -144,6 +147,7 @@ function ShowRandomCardMongo(msg, args) {
 }
 
 function SetDropChannel(msg, args) {
+    //TODO check if channel is already set
     mongoDB.AddOrUpdateChannel(msg, args, function (succeeded) {
         if(!succeeded) {
             msg.reply(databaseErrorMsg);
@@ -153,5 +157,36 @@ function SetDropChannel(msg, args) {
             cardDropper.StartDroppingCardsInChannel(msg.channel.id);
             msg.reply("This channel will now be used to drop cards. :ok_hand:");
         }
-    })
+    });
+}
+
+function ViewCard(msg, args) {
+    if(args.length <= 1)
+        return;
+    const cardData = args[1].split('#');
+    if(cardData.length <= 1)
+        return;
+
+    const discordID = msg.author.id;
+    const photoCardID = cardData[0];
+    const copyNumber = cardData[1];
+    mongoDB.CheckIfCardOwned(discordID, photoCardID, copyNumber, function (owned){
+        if(!owned)
+        {
+            msg.reply("You do not own " + args[1]);
+            return;
+        }
+        mongoDB.GetCardWithID(photoCardID, function (photoCard) {
+            if(photoCard === null)
+            return;
+
+            var embed = new MessageEmbed()
+                .setTitle(args[1])
+            .setDescription("Tier: " + photoCard.Tier + "\r\n" + "Copy Number: " + copyNumber + "\r\n" + "Owned by " + msg.author.tag)
+            .setImage(photoCard.Url);
+
+            msg.channel.send({ embeds: [embed]});
+        });
+    });
+    
 }
