@@ -1,6 +1,7 @@
 const Discord = require('discord.js'); //importing discord.js
 const mongoDB = require('./MongoDB.js');
 const main = require('./index.js');
+const helper = require('./Helper.js');
 
 const MessageEmbed = Discord.MessageEmbed;
 
@@ -9,16 +10,16 @@ var minTime = 15;
 var maxTime = 45;
 
 // In Seconds
-var timeVisible = 15;
+var timeVisible = 30;
 
 var tiers = [];
 var timers = [];
 var droppedCardData = [];
 
 module.exports = {
-    StartDroppingCards: function () {
-        GetTiers();
-        mongoDB.GetAllDropChannels(function (channels) {
+    StartDroppingCards: async function () {
+        await GetTiers();
+        await mongoDB.GetAllDropChannels(function (channels) {
             for (const channelID of channels) {
                 SetTimer(channelID);
             }
@@ -40,14 +41,14 @@ module.exports = {
     },
 };
 
-function GetTiers() {
-    mongoDB.GetTiers( function (result) {
+async function GetTiers() {
+    await mongoDB.GetTiers( function (result) {
         tiers = result.reverse();
     });
 }
 
 function SetTimer(channelID) {
-    var miliseconds = RandomRangeInt(minTime * 60 * 1000, maxTime * 60 * 1000);
+    var miliseconds = helper.RandomRangeInt(minTime * 60 * 1000, maxTime * 60 * 1000);
     var time = miliseconds / 1000;
     console.log("Card will drop in " + time + " seconds which is " + (time / 60) + " minutes")
     var id;
@@ -67,22 +68,33 @@ function DropCard(channelID, id) {
 
     //TODO check special channel for extra tier drop
 
-    mongoDB.GetCardFromDatabaseTier(GetTier(), function(codename, tier, url, ownedCopies) {
-        if (typeof tier === 'string' || tier instanceof String) {
+    let tierNumber = GetTier();
+    let tier = tiers.find(tier => tier.Tier === tierNumber);
+    mongoDB.GetCardFromDatabaseTier(tier.Tier, tier.MaxCopies, function(card) {
+        if (card === null) {
+            console.log("No card available");
             return;
         }
-        const number = Number(ownedCopies) + 1;
 
-        var claimCode = codename + "#" + number;
+        var claimCode = card.CodeName + "#" + card.CopyNumber;
         var cardData = { ClaimCode: claimCode, ChannelID: channelID, msg: {} }
         droppedCardData.push(cardData)
 
+        var tierString = "";
+        for(var i = 0; i < card.Tier; i++)
+        {
+            tierString += "★";
+        }
+
+        var viewing =  "Dropping " + claimCode;
+        tierString = "**" + tierString + "**";
+
         var embed = new MessageEmbed()
-            .setTitle(codename)
-        .setDescription("Tier: " + tier + "\r\n" +
-             "Copy Number: " + number + "\r\n" +
-             "> Type !claim " + claimCode)
-        .setImage(url);
+            .setAuthor(viewing, main.GetAvatarURL())
+            .setDescription("A card just dropped!" + "\r\n" +
+                            "Type !claim CODE")
+            .addFields({name: 'Tier: ', value: tierString})
+            .setImage(card.Url);
 
         main.GetChannel(channelID, function (channel) {
             channel.send({ embeds: [embed]}).then( msg => {
@@ -106,7 +118,6 @@ function EraseMessage(msg, claimCode) {
     if(cardData === undefined)
         return;
     droppedCardData = droppedCardData.filter(data => data !== cardData);
-    console.log(droppedCardData);
     msg.delete(0);
     SetTimer(cardData.ChannelID);
 }
@@ -119,7 +130,8 @@ function PickupPhotoCard(msg, cardData)
         if(succeeded)
         {
             EraseMessage(cardData.msg, claimCode);
-            msg.reply("You succesfully claimed " + claimCode);
+            msg.reply("You succesfully claimed " + claimCode + "\r\n" +
+            "> Type !view " + claimCode + " to view your card");
         } else{
             msg.reply("Ohno...  our database... it's broken...");
         }
@@ -127,8 +139,7 @@ function PickupPhotoCard(msg, cardData)
 }
 
 function GetTier() {
-    var chance = RandomRangeFloat(0, 100);
-    console.log("Chance: " + chance);
+    var chance = helper.RandomRangeFloat(0, 100);
     var chanceMax = 0;
     var chanceMin = 0;
     var index = -1;
@@ -145,14 +156,4 @@ function GetTier() {
     if(index == -1)
         index = tiers.length -1;
     return tiers[index].Tier;
-}
-
-function RandomRangeInt(min, max) {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min + 1) + min); //The maximum and minimum are inclusive
-}
-
-function RandomRangeFloat(min, max) {
-    return min + (max - min) * ((1 + 10E-16) * Math.random()); //The maximum is inclusive and the minimum is inclusive
 }

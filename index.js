@@ -27,3 +27,7 @@ process.on('exit', function() { // On Exit
 module.exports.GetChannel = async (channelID, callback) => {
     return callback(client.channels.cache.get(channelID));
 }
+
+module.exports.GetAvatarURL = () => {
+    return client.user.avatarURL();
+}
