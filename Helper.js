@@ -6,5 +6,10 @@ module.exports = {
     },    
     RandomRangeFloat: function(min, max) {
         return min + (max - min) * ((1 + 10E-16) * Math.random()); //The maximum is inclusive and the minimum is inclusive
+    },
+    ArrayRemove(array, value) {
+        return array.filter(function(element) {
+            return element != value;
+        });
     }
 };

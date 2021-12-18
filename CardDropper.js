@@ -33,11 +33,11 @@ module.exports = {
             clearTimeout(timer);
         }
     },
-    ClaimCard: function(msg, claimCode) {
+    ClaimCard: async function(msg, claimCode) {
         var channelID = msg.channel.id;
         var cardData = droppedCardData.find(data => data.ClaimCode === claimCode && data.ChannelID === channelID);
         if(cardData !== undefined)
-            PickupPhotoCard(msg, cardData);
+            await PickupPhotoCard(msg, cardData);
     },
 };
 
@@ -122,11 +122,11 @@ function EraseMessage(msg, claimCode) {
     SetTimer(cardData.ChannelID);
 }
 
-function PickupPhotoCard(msg, cardData)
+async function PickupPhotoCard(msg, cardData)
 {
     const claimCode = cardData.ClaimCode;
     var data = cardData.ClaimCode.split('#');
-    mongoDB.AddCardToUser(msg.author.id, data[0], data[1], function (succeeded){
+    await mongoDB.AddCardToUser(msg.author.id, data[0], data[1], function (succeeded){
         if(succeeded)
         {
             EraseMessage(cardData.msg, claimCode);

@@ -24,7 +24,7 @@ module.exports = async function(msg) {
         return;
     
     const command = args[0].toLowerCase();
-    mongoDB.CheckUserInDatabase(msg.author.id, function (userExists) {
+    await mongoDB.CheckUserInDatabase(msg.author.id, async function (userExists) {
         if(userExists)
         {
             if(command == 'begin') //If user exists and types !begin do nothing
@@ -43,38 +43,29 @@ module.exports = async function(msg) {
 
         switch (command) { // Command handling
             case 'begin': // !begin command - creates a user account, adds to db
-                Register(msg, args);
+                await Register(msg);
                 break;
             case 'showrandomcard':
-                ShowRandomCard(msg, args);
-                break;
-            case 'showrandomcardmongo':
-                ShowRandomCardMongo(msg, args);
+                await ShowRandomCard(msg, args);
                 break;
             case 'claim':
-                cardDropper.ClaimCard(msg, args[1]);
+                await cardDropper.ClaimCard(msg, args[1]);
                 break;
             case 'drophere':
                 //TODO check roll
-                SetDropChannel(msg, args);
+                await SetDropChannel(msg, args);
                 break;
             case 'view':
-                ViewCard(msg, args);
+                await ViewCard(msg, args);
                 break;
             case 'test':
-                Test(msg, args);
+                Test(msg);
                 break;
-            case 'test2':
-                const roles = msg.mentions.roles;
-                var roleIDs = [];
-                roles.forEach((role) => {roleIDs.push(role.id)});
-                mongoDB.AddModRoles(msg.guild.id, roleIDs, function (succeeded) {
-                    if(succeeded)
-                        msg.reply("The roles have been added.");
-                    else
-                        msg.reply(databaseErrorMsg);
-                });
-                
+            case 'addmodrole':
+                await AddModRoles(msg);
+                break;
+            case 'removemodrole':
+                await RemoveModRoles(msg);
                 break;
             default:
                 console.log('No Command found called ' + command);
@@ -82,8 +73,8 @@ module.exports = async function(msg) {
     })
 };
 
-function Register(msg, args) { 
-    mongoDB.InsertUserinDatabase(msg.author.id, msg.author.tag,
+async function Register(msg) { 
+    await mongoDB.InsertUserinDatabase(msg.author.id, msg.author.tag,
          function (insertSucceeded) {
             if(insertSucceeded)
                 msg.channel.send("Successfully registered!");
@@ -93,7 +84,7 @@ function Register(msg, args) {
     );
 }
 
-function Test(msg, args) {
+function Test(msg) {
     var embed = new MessageEmbed()
                     .setTitle("Test Command")
                     .setDescription("Test")
@@ -101,7 +92,7 @@ function Test(msg, args) {
     msg.channel.send({ embeds: [embed]});
 }
 
-function ShowRandomCard(msg, args) {
+async function ShowRandomCard(msg, args) {
     if(args.length < 2) {
         console.log('No tier number found');
         return;
@@ -111,36 +102,7 @@ function ShowRandomCard(msg, args) {
 
     if (!isNaN(parseInt(tier))) {
         tier = parseInt(tier);
-        mysqlDB.GetCardFromDatabase(tier, function (codename, tier, url) {
-            if (typeof tier === 'string' || tier instanceof String) {
-                msg.reply(tier);
-                return;
-            }              
-            var embed = new MessageEmbed()
-                .setTitle(codename)
-                .setDescription("Tier: " + tier)
-                .setImage(url);
-
-            msg.channel.send({ embeds: [embed]});
-            return;
-        });
-        return;
-    }
-    console.log('Argument is not a number');
-    return;
-}
-
-function ShowRandomCardMongo(msg, args) {
-    if(args.length < 2) {
-        console.log('No tier number found');
-        return;
-    }
-
-    var tier = args[1];
-
-    if (!isNaN(parseInt(tier))) {
-        tier = parseInt(tier);
-        mongoDB.GetCardFromDatabaseTier(tier, function (codename, tier, url, ownedCopies) {
+        await mongoDB.GetCardFromDatabaseTier(tier, function (codename, tier, url, ownedCopies) {
             if (typeof tier === 'string' || tier instanceof String) {
                 msg.reply(tier);
                 return;
@@ -159,14 +121,14 @@ function ShowRandomCardMongo(msg, args) {
     return;
 }
 
-function SetDropChannel(msg, args) {
-    mongoDB.CheckDropChannel(msg.guild.id, msg.channel.id, function (exists) {
+async function SetDropChannel(msg, args) {
+    await mongoDB.CheckDropChannel(msg.guild.id, msg.channel.id, async function (exists) {
         if(exists) //Channel has already been set
         {
             msg.reply("This channel has already been set as a drop channel");
         } else {
             const specialChannel = args.length > 1 && args[1].toLowerCase() === "boost";
-            mongoDB.AddOrUpdateChannel(msg, args, specialChannel, function (succeeded) {
+            await mongoDB.AddOrUpdateChannel(msg, args, specialChannel, function (succeeded) {
                 if(!succeeded) {
                     msg.reply(databaseErrorMsg);
                 }
@@ -220,4 +182,29 @@ async function ViewCard(msg, args) {
         });
     });
     
+}
+
+async function AddModRoles(msg) {
+    await mongoDB.AddModRoles(msg.guild.id, GetRoles(msg), function (succeeded) {
+        if(succeeded)
+            msg.reply("The roles have been added.");
+        else
+            msg.reply(databaseErrorMsg);
+    });
+}
+
+async function RemoveModRoles(msg) {
+    await mongoDB.RemoveModRoles(msg.guild.id, GetRoles(msg), function (succeeded) {
+        if(succeeded)
+            msg.reply("The roles have been removed.");
+        else
+            msg.reply(databaseErrorMsg);
+    });
+}
+
+function GetRoles(msg) {
+    const roles = msg.mentions.roles;
+    var roleIDs = [];
+    roles.forEach((role) => {roleIDs.push(role.id)});
+    return roleIDs
 }

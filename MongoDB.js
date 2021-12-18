@@ -138,7 +138,20 @@ module.exports = {
         });
     },
     RemoveModRoles: async function (serverID, roles, callback) {
-        //TODO remove each roll
+        const query = { ServerID: { $eq: serverID } };
+        await GetDocument("ModRoles", query, {}, async function(ModRoles) {
+            if(ModRoles === null)
+                return callback(false);
+            for(let i = 0; i < roles.length; i++) {
+                console.log(i + " " + roles[i]);
+                ModRoles.Roles = helper.ArrayRemove(ModRoles.Roles, roles[i]);
+            }
+            const update = { $set: { Roles: ModRoles.Roles }};
+            const options = { upsert: true };
+            await InsertOrUpdate("ModRoles", query, update, options, function(succeeded) {
+                return callback(succeeded);
+            });
+        });
     }
 };
 
