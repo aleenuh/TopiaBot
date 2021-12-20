@@ -143,7 +143,6 @@ module.exports = {
             if(ModRoles === null)
                 return callback(false);
             for(let i = 0; i < roles.length; i++) {
-                console.log(i + " " + roles[i]);
                 ModRoles.Roles = helper.ArrayRemove(ModRoles.Roles, roles[i]);
             }
             const update = { $set: { Roles: ModRoles.Roles }};
@@ -152,6 +151,19 @@ module.exports = {
                 return callback(succeeded);
             });
         });
+    },
+    CheckIfMod: async function (msg, callback) {
+        const query = { ServerID: { $eq: msg.guild.id } };
+        const options = { projection: { Roles: 1 } };
+        await GetDocument ("ModRoles", query, options, function (result) {
+            if(result === null || result.Roles.length === 0)
+                return callback(null);
+            for(let i = 0; i < result.Roles.length; i++) {
+                if(msg.member.roles.cache.find(r => r.id === result.Roles[i]))
+                    return callback(true);
+            }
+            return callback(false);
+        })
     }
 };
 

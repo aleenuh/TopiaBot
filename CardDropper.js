@@ -2,6 +2,7 @@ const Discord = require('discord.js'); //importing discord.js
 const mongoDB = require('./MongoDB.js');
 const main = require('./index.js');
 const helper = require('./Helper.js');
+const commands = require('./Commands');
 
 const MessageEmbed = Discord.MessageEmbed;
 
@@ -92,7 +93,7 @@ function DropCard(channelID, id) {
         var embed = new MessageEmbed()
             .setAuthor(viewing, main.GetAvatarURL())
             .setDescription("A card just dropped!" + "\r\n" +
-                            "Type !claim CODE")
+                            "Type " + commands.Prefix() + "claim CODE")
             .addFields({name: 'Tier: ', value: tierString})
             .setImage(card.Url);
 
@@ -131,7 +132,7 @@ async function PickupPhotoCard(msg, cardData)
         {
             EraseMessage(cardData.msg, claimCode);
             msg.reply("You succesfully claimed " + claimCode + "\r\n" +
-            "> Type !view " + claimCode + " to view your card");
+            "> Type " + commands.Prefix() + "view " + claimCode + " to view your card");
         } else{
             msg.reply("Ohno...  our database... it's broken...");
         }

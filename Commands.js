@@ -7,6 +7,10 @@ const prefix = '!';
 const databaseErrorMsg = "Oh no...  Our Database... It's broken";
 const MessageEmbed = Discord.MessageEmbed;
 
+module.exports.Prefix = () => {
+    return prefix;
+}
+
 module.exports = async function(msg) {
     if(msg.author.bot) //Message was sent by bot
         return;
@@ -36,7 +40,7 @@ module.exports = async function(msg) {
         else {
             if(command != 'begin') //If user does not exists and does not type !begin send a reply
             {
-                msg.reply("Please type '!begin' to start using the Topia Bot");
+                msg.reply("Please type '" + prefix + "begin' to start using the Topia Bot");
                 return;
             }
         }
@@ -66,6 +70,9 @@ module.exports = async function(msg) {
                 break;
             case 'removemodrole':
                 await RemoveModRoles(msg);
+                break;
+            case 'modtest':
+
                 break;
             default:
                 console.log('No Command found called ' + command);
@@ -122,25 +129,30 @@ async function ShowRandomCard(msg, args) {
 }
 
 async function SetDropChannel(msg, args) {
-    await mongoDB.CheckDropChannel(msg.guild.id, msg.channel.id, async function (exists) {
-        if(exists) //Channel has already been set
-        {
-            msg.reply("This channel has already been set as a drop channel");
-        } else {
-            const specialChannel = args.length > 1 && args[1].toLowerCase() === "boost";
-            await mongoDB.AddOrUpdateChannel(msg, args, specialChannel, function (succeeded) {
-                if(!succeeded) {
-                    msg.reply(databaseErrorMsg);
-                }
-                else {
-                    cardDropper.StartDroppingCardsInChannel(msg.channel.id);
-                    var specialString = " ";
-                    if(specialChannel)
-                        specialString = " special ";
-                    msg.reply("This channel will now be used to drop" + specialString + "cards. :ok_hand:");
-                }
-            });
-        }
+    await CheckIfMod(msg, async function (isMod) {
+        if(isMod === false) 
+            return;
+
+        await mongoDB.CheckDropChannel(msg.guild.id, msg.channel.id, async function (exists) {
+            if(exists) //Channel has already been set
+            {
+                msg.reply("This channel has already been set as a drop channel");
+            } else {
+                const specialChannel = args.length > 1 && args[1].toLowerCase() === "boost";
+                await mongoDB.AddOrUpdateChannel(msg, args, specialChannel, function (succeeded) {
+                    if(!succeeded) {
+                        msg.reply(databaseErrorMsg);
+                    }
+                    else {
+                        cardDropper.StartDroppingCardsInChannel(msg.channel.id);
+                        var specialString = " ";
+                        if(specialChannel)
+                            specialString = " special ";
+                        msg.reply("This channel will now be used to drop" + specialString + "cards. :ok_hand:");
+                    }
+                });
+            }
+        });
     });
 }
 
@@ -207,4 +219,19 @@ function GetRoles(msg) {
     var roleIDs = [];
     roles.forEach((role) => {roleIDs.push(role.id)});
     return roleIDs
+}
+
+async function CheckIfMod(msg, callback) {
+    await mongoDB.CheckIfMod(msg, function (result) {
+        if(result === null)
+        {
+            msg.reply("This command requires a moderator role to be set. \r\n >Type " + prefix + "AddModRole @ROLE");
+            return callback(false);
+        } else if (result === false)
+        {
+            msg.reply("This command can only be used by a moderator.");
+            return callback(false);
+        }
+        return callback(true);
+    });
 }
