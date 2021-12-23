@@ -12,7 +12,7 @@ client.on('ready', () => { // On discord client ready
     CardDropper.StartDroppingCards();
 });
 
-client.on('messageCreate', commandHandler);
+client.on('messageCreate', commandHandler.HandleCommands);
 client.login(process.env.CLIENT_TOKEN); // Login bot using token (.env file)
 
 

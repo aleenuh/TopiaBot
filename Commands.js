@@ -7,11 +7,9 @@ const prefix = '!';
 const databaseErrorMsg = "Oh no...  Our Database... It's broken";
 const MessageEmbed = Discord.MessageEmbed;
 
-module.exports.Prefix = () => {
-    return prefix;
-}
+module.exports.Prefix = prefix;
 
-module.exports = async function(msg) {
+module.exports.HandleCommands = async (msg) => {
     if(msg.author.bot) //Message was sent by bot
         return;
 
@@ -53,7 +51,7 @@ module.exports = async function(msg) {
                 await ShowRandomCard(msg, args);
                 break;
             case 'claim':
-                await cardDropper.ClaimCard(msg, args[1]);
+                cardDropper.ClaimCard(msg, args[1]);
                 break;
             case 'drophere':
                 //TODO check roll
@@ -139,7 +137,7 @@ async function SetDropChannel(msg, args) {
                 msg.reply("This channel has already been set as a drop channel");
             } else {
                 const specialChannel = args.length > 1 && args[1].toLowerCase() === "boost";
-                await mongoDB.AddOrUpdateChannel(msg, args, specialChannel, function (succeeded) {
+                await mongoDB.AddOrUpdateChannel(msg, specialChannel, function (succeeded) {
                     if(!succeeded) {
                         msg.reply(databaseErrorMsg);
                     }

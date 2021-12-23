@@ -17,30 +17,28 @@ var tiers = [];
 var timers = [];
 var droppedCardData = [];
 
-module.exports = {
-    StartDroppingCards: async function () {
-        await GetTiers();
-        await mongoDB.GetAllDropChannels(function (channels) {
-            for (const channelID of channels) {
-                SetTimer(channelID);
-            }
-        });
-    },
-    StartDroppingCardsInChannel: function(channelID) {
-        SetTimer(channelID);
-    },
-    StopDroppingCards: function() {
-        for (const timer of timers) {
-            clearTimeout(timer);
+module.exports.StartDroppingCards = async() => {
+    await GetTiers();
+    await mongoDB.GetAllDropChannels(function (channels) {
+        for (const channelID of channels) {
+            SetTimer(channelID);
         }
-    },
-    ClaimCard: async function(msg, claimCode) {
-        var channelID = msg.channel.id;
-        var cardData = droppedCardData.find(data => data.ClaimCode === claimCode && data.ChannelID === channelID);
-        if(cardData !== undefined)
-            await PickupPhotoCard(msg, cardData);
-    },
-};
+    });
+}
+module.exports.StartDroppingCardsInChannel = (channelID) => {
+    SetTimer(channelID);
+}
+module.exports.StopDroppingCards = () => {
+    for (const timer of timers) {
+        clearTimeout(timer);
+    }
+}
+module.exports.ClaimCard = async(msg, claimCode) => {
+    var channelID = msg.channel.id;
+    var cardData = droppedCardData.find(data => data.ClaimCode === claimCode && data.ChannelID === channelID);
+    if(cardData !== undefined)
+        await PickupPhotoCard(msg, cardData);
+}
 
 async function GetTiers() {
     await mongoDB.GetTiers( function (result) {
@@ -58,20 +56,21 @@ function SetTimer(channelID) {
     else
         id = timers[timers.length - 1].ID;
 
-    var timer = { ID: id, TimeOut: setTimeout(function() {
-        DropCard(channelID, id);
+    var timer = { ID: id, TimeOut: setTimeout(async function() {
+        await DropCard(channelID, id);
     }, miliseconds) }
     timers.push(timer);
 }
 
-function DropCard(channelID, id) {
+async function DropCard(channelID, id) {
     timers = timers.filter(data => data.ID !== id)
 
     //TODO check special channel for extra tier drop
 
     let tierNumber = GetTier();
     let tier = tiers.find(tier => tier.Tier === tierNumber);
-    mongoDB.GetCardFromDatabaseTier(tier.Tier, tier.MaxCopies, function(card) {
+    //mongoDB.GetCardFromDatabaseTier(tier.Tier, tier.MaxCopies, function(card) {
+    await mongoDB.GetCardFromDatabaseTier(4, tier.MaxCopies, async function(card) {
         if (card === null) {
             console.log("No card available");
             return;
@@ -93,11 +92,11 @@ function DropCard(channelID, id) {
         var embed = new MessageEmbed()
             .setAuthor(viewing, main.GetAvatarURL())
             .setDescription("A card just dropped!" + "\r\n" +
-                            "Type " + commands.Prefix() + "claim CODE")
+                            "Type " + commands.Prefix + "claim CODE")
             .addFields({name: 'Tier: ', value: tierString})
             .setImage(card.Url);
 
-        main.GetChannel(channelID, function (channel) {
+        await main.GetChannel(channelID, function (channel) {
             channel.send({ embeds: [embed]}).then( msg => {
                 var cardDataInList = droppedCardData.find(data => data === cardData);
                 cardDataInList.msg = msg;
@@ -132,7 +131,7 @@ async function PickupPhotoCard(msg, cardData)
         {
             EraseMessage(cardData.msg, claimCode);
             msg.reply("You succesfully claimed " + claimCode + "\r\n" +
-            "> Type " + commands.Prefix() + "view " + claimCode + " to view your card");
+            "> Type " + commands.Prefix + "view " + claimCode + " to view your card");
         } else{
             msg.reply("Ohno...  our database... it's broken...");
         }
