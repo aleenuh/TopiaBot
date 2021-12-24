@@ -1,7 +1,9 @@
- 
 require('dotenv').config(); // initialize dotenv
+const { Options } = require('discord.js');
 const { MongoClient } = require('mongodb');
+const { MessageEmbed } = require('discord.js');
 const helper = require('./Helper.js');
+const main = require('./index.js');
 
 const uri = "mongodb+srv://topiabot:" + process.env.DB_PASSWORD + "@topia.ytiyn.mongodb.net/" + process.env.DB_DATABASE + "?retryWrites=true&w=majority";
 const client = new MongoClient(uri);
@@ -34,19 +36,19 @@ module.exports.GetTiers = async (callback) => {
         return callback(tiers);
     });
 }
-module.exports.AddCardToUser = async (discordID, photocardID, copyNumber, callback) => {
-    const userCard = { DiscordID: discordID, PhotoCardID: photocardID, CopyNumber: copyNumber };
+module.exports.AddCardToUser = async (discordID, codeName, copyNumber, callback) => {
+    const userCard = { DiscordID: discordID, CodeName: codeName, CopyNumber: copyNumber };
     await InsertDocument ("UserCard", userCard, async function (succeeded) {
         if(!succeeded)
             return callback(succeeded);
             
-        var query = { CodeName: { $eq: photocardID } };
+        var query = { CodeName: { $eq: codeName } };
         var options = { projection: { CopyNumber: 1 } };
         await GetCollection("UserCard", query, options, {}, async function(result) { 
             if(result === null)
                 return callback(false);
 
-            query = { CodeName: photocardID }
+            query = { CodeName: codeName }
             const update = { $set: { OwnedCopies: result.length + 1 }};
             options = { upsert: false };
             await InsertOrUpdate("PhotoCard", query, update, options, function (updateSucceeded) {
@@ -83,14 +85,14 @@ module.exports.GetAllDropChannels = async (callback) => {
         return callback(allChannels);
     });
 }
-module.exports.CheckIfCardOwned = async (discordID, photoCardID, copyNumber, callback) => { 
-    const query = { DiscordID: { $eq: discordID}, PhotoCardID: { $eq: photoCardID}, CopyNumber: { $eq: copyNumber}};
+module.exports.CheckIfCardOwned = async (discordID, codeName, copyNumber, callback) => { 
+    const query = { DiscordID: { $eq: discordID}, CodeName: { $eq: codeName}, CopyNumber: { $eq: copyNumber}};
     await CheckForRow("UserCard", query, function (exists) {
         return callback(exists);
     });
 }
-module.exports.GetCardWithID = async (photocardID, callback) => { 
-    const query = { CodeName: { $eq: photocardID} };
+module.exports.GetCardWithID = async (codeName, callback) => { 
+    const query = { CodeName: { $eq: codeName} };
     const options = {
         projection: { _id: 0, CodeName: 1, Tier: 1, Url: 1, OwnedCopies: 1 }
     };
@@ -163,6 +165,84 @@ module.exports.CheckIfMod = async (msg, callback) => {
         return callback(false);
     });
 }
+module.exports.CheckDaily = async (msg, callback) => {
+    query = { DiscordID: { $eq: msg.author.id } };
+    await GetDocument("UserDaily", query, {}, async function (userDaily) {
+        if(userDaily === null)
+        {
+            let daily = { DiscordID: msg.author.id, DateTime: new Date() };
+            await InsertDocument("UserDaily", daily, async function (succeeded) {
+                if(!succeeded)
+                    return callback(null);
+                return callback(true);
+            });
+            return;
+        }
+
+        let date = new Date();
+        let difference = userDaily.DateTime.getTime() - date.getTime();
+        let hours = difference / 1000 / 60 / 60;
+        if(hours >= 24) {
+            return callback(true)
+        } else {
+            return callback(false);
+        }
+    });
+}
+module.exports.ClaimDaily = async (msg, tier, callback) => {
+    await GetCardWithTier(tier.Tier, tier.MaxCopies, async function (card){
+        if(card === null)
+            return callback(false);
+        await GetAvailableCopyNumber(card.codeName, tier.MaxCopies, async function(copyNumber){
+            await module.exports.AddCardToUser(msg.author.id, card.CodeName, copyNumber, async function (succeeded) {
+                if(!succeeded)
+                    return callback(false);
+                await module.exports.AddCoins(msg.author.id, 150, async function(goldAdded) {
+                    if(!goldAdded)
+                        return callback(false);
+    
+                    var tierString = "";
+                    for(var i = 0; i < card.Tier; i++) {
+                        tierString += "★";
+                    }
+            
+                    var viewing =  "Viewing Daily Rewards";
+                    tierString = "**" + tierString + "**";
+                    const codeName = card.CodeName + "#" + copyNumber;
+            
+                    const coinEmoji = "<:topiacoin:923637053709774888>";
+
+                    var embed = new MessageEmbed()
+                        .setAuthor(viewing, msg.author.avatarURL())
+                        .addFields( { name: 'Card: ', value: codeName},
+                                    {name: 'Tier: ', value: tierString},
+                                    {name: 'Daily Gold: ', value: coinEmoji + " 150"})
+                        .setImage(card.Url);
+                    msg.channel.send({ embeds: [embed]});
+                    return callback(true);
+                });
+            });            
+        });
+    });
+}
+module.exports.AddCoins = async (discordID, amount, callback) => {
+    const query = { DiscordID: { $eq: discordID } };
+    var options = {
+        projection: { Coins: 1 }
+    };
+    await GetDocument("User", query, options, async function(user){
+        if(user === null)
+            return callback(false);
+        const newCoins = user.Coins + amount;
+        const update = { $set: { Coins: newCoins } };
+        options = { upsert: true };
+        await InsertOrUpdate("User", query, update, options, async function (succeeded) {
+            return callback(succeeded);
+        });
+    });
+}
+
+
 
 async function GetAvailableCopyNumber(codeName, maxCopies, callback){
     const query = { CodeName: { $eq: codeName } };

@@ -54,7 +54,6 @@ module.exports.HandleCommands = async (msg) => {
                 cardDropper.ClaimCard(msg, args[1]);
                 break;
             case 'drophere':
-                //TODO check roll
                 await SetDropChannel(msg, args);
                 break;
             case 'view':
@@ -69,8 +68,8 @@ module.exports.HandleCommands = async (msg) => {
             case 'removemodrole':
                 await RemoveModRoles(msg);
                 break;
-            case 'modtest':
-
+            case 'daily':
+                await GetDaily(msg);
                 break;
             default:
                 console.log('No Command found called ' + command);
@@ -231,5 +230,21 @@ async function CheckIfMod(msg, callback) {
             return callback(false);
         }
         return callback(true);
+    });
+}
+
+async function GetDaily(msg) {
+    await mongoDB.CheckDaily(msg, async function (exists) {
+        if(exists === null) {
+            msg.reply(databaseErrorMsg);
+            return;
+        } else if (exists === false) {
+            msg.reply("You cannot claim your daily yet.");
+        } else if (exists === true) {
+            await mongoDB.ClaimDaily(msg, cardDropper.GetTier(), async function (succeeded) {
+                if(!succeeded)
+                    msg.reply(databaseErrorMsg);
+            });
+        }
     });
 }

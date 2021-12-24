@@ -17,8 +17,27 @@ var tiers = [];
 var timers = [];
 var droppedCardData = [];
 
+module.exports.GetTier = () => {
+    var chance = helper.RandomRangeFloat(0, 100);
+    var chanceMax = 0;
+    var chanceMin = 0;
+    var index = -1;
+    for(let i = 0; i < tiers.length; i++) {
+        var tier = tiers[i];
+        chanceMin = chanceMax;
+        chanceMax += tier.Chance;
+        if(chance > chanceMin && chance <= chanceMax) {
+            index = i;
+            break;
+        }
+    }
+
+    if(index == -1)
+        index = tiers.length -1;
+    return tiers[index];
+}
 module.exports.StartDroppingCards = async() => {
-    await GetTiers();
+    await SetTiers();
     await mongoDB.GetAllDropChannels(function (channels) {
         for (const channelID of channels) {
             SetTimer(channelID);
@@ -40,7 +59,7 @@ module.exports.ClaimCard = async(msg, claimCode) => {
         await PickupPhotoCard(msg, cardData);
 }
 
-async function GetTiers() {
+async function SetTiers() {
     await mongoDB.GetTiers( function (result) {
         tiers = result.reverse();
     });
@@ -66,10 +85,8 @@ async function DropCard(channelID, id) {
     timers = timers.filter(data => data.ID !== id)
 
     //TODO check special channel for extra tier drop
-
-    let tierNumber = GetTier();
-    let tier = tiers.find(tier => tier.Tier === tierNumber);
-    await mongoDB.GetCardFromDatabaseTier(tier.Tier, tier.MaxCopies, function(card) {
+    let tier = GetTier();
+    await mongoDB.GetCardFromDatabaseTier(tier.Tier, tier.MaxCopies, async function(card) {
         if (card === null) {
             console.log("No card available");
             return;
@@ -135,24 +152,4 @@ async function PickupPhotoCard(msg, cardData)
             msg.reply("Ohno...  our database... it's broken...");
         }
     });
-}
-
-function GetTier() {
-    var chance = helper.RandomRangeFloat(0, 100);
-    var chanceMax = 0;
-    var chanceMin = 0;
-    var index = -1;
-    for(let i = 0; i < tiers.length; i++) {
-        var tier = tiers[i];
-        chanceMin = chanceMax;
-        chanceMax += tier.Chance;
-        if(chance > chanceMin && chance <= chanceMax) {
-            index = i;
-            break;
-        }
-    }
-
-    if(index == -1)
-        index = tiers.length -1;
-    return tiers[index].Tier;
 }
