@@ -69,8 +69,7 @@ async function DropCard(channelID, id) {
 
     let tierNumber = GetTier();
     let tier = tiers.find(tier => tier.Tier === tierNumber);
-    //mongoDB.GetCardFromDatabaseTier(tier.Tier, tier.MaxCopies, function(card) {
-    await mongoDB.GetCardFromDatabaseTier(4, tier.MaxCopies, async function(card) {
+    await mongoDB.GetCardFromDatabaseTier(tier.Tier, tier.MaxCopies, function(card) {
         if (card === null) {
             console.log("No card available");
             return;
